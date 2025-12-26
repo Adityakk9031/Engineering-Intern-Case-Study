@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useState } from "react";
 
 export type PurposeType = "PERSONAL" | "BUSINESS";
 
@@ -11,7 +12,6 @@ export type UserProfile = {
   /** Optional ISO date string to override the auto date on the template */
   dateOverride?: string;
 };
-
 const STORAGE_KEY = "suvichar_user_profile";
 
 let inMemoryProfile: UserProfile | null = null;

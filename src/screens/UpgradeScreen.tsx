@@ -7,10 +7,12 @@ import {
   Platform,
   ToastAndroid,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
+import { api } from "../services/api";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Upgrade">;
 
@@ -24,21 +26,75 @@ function showToast(message: string) {
 
 export default function UpgradeScreen({ navigation }: Props) {
   const [upgrading, setUpgrading] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<"idle" | "processing" | "success">("idle");
+  const [selectedPlan, setSelectedPlan] = useState<"MONTHLY" | "YEARLY" | null>(null);
 
+  // Fake payment and upgrade logic
   const onSelectPlan = async (planType: "MONTHLY" | "YEARLY") => {
     try {
+      setSelectedPlan(planType);
       setUpgrading(true);
-      // UI-only per requirement: just show a toast
-      showToast("Payment flow coming soon");
+      setPaymentStep("processing");
+
+      // Simulate payment processing delay (2 seconds)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Upgrade to premium
+      await api.upgradeToPremium(planType);
+
+      // Show success state
+      setPaymentStep("success");
+
+      // Close modal and go back after 2 seconds
+      setTimeout(() => {
+        setPaymentStep("idle");
+        setSelectedPlan(null);
+        setUpgrading(false);
+        navigation.goBack();
+      }, 2000);
     } catch (e) {
-      Alert.alert("त्रुटि", "अपग्रेड में समस्या आई। कृपया पुनः प्रयास करें।");
-    } finally {
+      setPaymentStep("idle");
       setUpgrading(false);
+      Alert.alert("त्रुटि", "अपग्रेड में समस्या आई। कृपया पुनः प्रयास करें।");
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* Payment Modal */}
+      <Modal
+        visible={upgrading}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {paymentStep === "processing" && (
+              <>
+                <ActivityIndicator size="large" color="#6a0dad" />
+                <Text style={styles.modalTitle}>Payment Processing</Text>
+                <Text style={styles.modalText}>
+                  Fake Payment for {selectedPlan === "MONTHLY" ? "₹199/Month" : "₹999/Year"}
+                </Text>
+              </>
+            )}
+
+            {paymentStep === "success" && (
+              <>
+                <Text style={styles.successIcon}>✓</Text>
+                <Text style={styles.successTitle}>Payment Successful!</Text>
+                <Text style={styles.successText}>
+                  You are now a Premium User
+                </Text>
+                <Text style={styles.successSubText}>
+                  Premium features unlocked!
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Text style={styles.title}>Upgrade to Premium</Text>
 
       <View style={styles.previewBox}>
@@ -59,7 +115,7 @@ export default function UpgradeScreen({ navigation }: Props) {
           accessibilityLabel="मंथली प्लान चुनें"
         >
           <Text style={styles.planButtonText}>
-            {upgrading ? "प्रोसेस हो रहा है..." : "चुनें"}
+            {upgrading && selectedPlan === "MONTHLY" ? "Processing..." : "Pay Now"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -75,7 +131,7 @@ export default function UpgradeScreen({ navigation }: Props) {
           accessibilityLabel="ईयरली प्लान चुनें"
         >
           <Text style={styles.planButtonText}>
-            {upgrading ? "प्रोसेस हो रहा है..." : "चुनें"}
+            {upgrading && selectedPlan === "YEARLY" ? "Processing..." : "Pay Now"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -90,6 +146,7 @@ export default function UpgradeScreen({ navigation }: Props) {
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
+        disabled={upgrading}
       >
         <Text style={styles.backText}>वापस जाएँ</Text>
       </TouchableOpacity>
@@ -103,6 +160,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 48,
     backgroundColor: "#f9f5ff"
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)"
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    width: "80%"
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 16,
+    fontFamily: "NotoSansDevanagari"
+  },
+  modalText: {
+    fontSize: 14,
+    marginTop: 8,
+    color: "#666",
+    fontFamily: "NotoSansDevanagari"
+  },
+  successIcon: {
+    fontSize: 60,
+    color: "#4caf50",
+    fontWeight: "bold"
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 16,
+    color: "#4caf50",
+    fontFamily: "NotoSansDevanagari"
+  },
+  successText: {
+    fontSize: 16,
+    marginTop: 8,
+    fontFamily: "NotoSansDevanagari"
+  },
+  successSubText: {
+    fontSize: 14,
+    marginTop: 4,
+    color: "#666",
+    fontFamily: "NotoSansDevanagari"
   },
   title: {
     fontSize: 22,
@@ -156,7 +261,7 @@ const styles = StyleSheet.create({
   },
   planButton: {
     alignSelf: "flex-start",
-    backgroundColor: "#6a0dad",
+    backgroundColor: "#6a0bad",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20
@@ -185,7 +290,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 16,
-    color: "#6a0dad",
+    color: "#6a0bad",
     fontFamily: "NotoSansDevanagari"
   }
 });

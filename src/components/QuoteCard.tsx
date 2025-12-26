@@ -6,14 +6,14 @@ import {
   View,
   ImageSourcePropType
 } from "react-native";
-import { QuoteTemplate } from "../backend/quotes";
+import { QuoteTemplate, QuoteTemplate2 } from "../backend/quotes";
 import CircularPhotoWithGlow from "./CircularPhotoWithGlow";
 import DateBadge from "./DateBadge";
 import { UserProfile } from "../backend/user";
 import { getRandomQuote } from "../backend/quoteContent";
 
 type Props = {
-  template: QuoteTemplate;
+  template: QuoteTemplate | QuoteTemplate2;
   profile: UserProfile;
 };
 
@@ -88,7 +88,8 @@ const QuoteCard = forwardRef<View, Props>(({ template, profile }, ref) => {
           </Text>
         </View>
 
-        {profile.showDate && (
+        {/* Show date only if template has dateBounds (Premium feature) */}
+        {"dateBounds" in template && template.dateBounds && profile.showDate && (
           <View style={styles.dateBadgeWrapper}>
             <DateBadge
               date={
@@ -100,15 +101,21 @@ const QuoteCard = forwardRef<View, Props>(({ template, profile }, ref) => {
           </View>
         )}
 
-        <View style={styles.nameWrapper}>
-          <Text style={styles.nameText} numberOfLines={2}>
-            {profile.name}
-          </Text>
-        </View>
+        {/* Show name only if template has nameBounds (Premium feature) */}
+        {"nameBounds" in template && template.nameBounds && (
+          <View style={styles.nameWrapper}>
+            <Text style={styles.nameText} numberOfLines={2}>
+              {profile.name}
+            </Text>
+          </View>
+        )}
 
-        <View style={styles.photoWrapper}>
-          <CircularPhotoWithGlow uri={profile.photoUri} />
-        </View>
+        {/* Show photo only if template has photoBounds (Premium feature) */}
+        {"photoBounds" in template && template.photoBounds && (
+          <View style={styles.photoWrapper}>
+            <CircularPhotoWithGlow uri={profile.photoUri} />
+          </View>
+        )}
       </ImageBackground>
     </View>
   );

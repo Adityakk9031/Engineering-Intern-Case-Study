@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RootStackParamList } from "../App";
 import { api } from "../services/api";
 import { QuoteTemplate } from "../backend/quotes";
+import {QuoteTemplate2} from "../backend/quotes";
 import { UserProfile } from "../backend/user";
 import CategoryPills from "../components/CategoryPills";
 import QuoteCard from "../components/QuoteCard";
@@ -30,7 +31,7 @@ const DOWNLOADS_KEY = "suvichar_downloaded_quotes";
 
 export default function MainScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
+  const [templates, setTemplates] = useState<(QuoteTemplate | QuoteTemplate2)[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<
     "ALL" | QuoteTemplate["categories"][number]
   >("ALL");
@@ -39,6 +40,7 @@ export default function MainScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const cardRef = useRef<View | null>(null);
+  const [isPremium, setisPremium] = useState<boolean>(false);
 
   // Load profile and templates whenever this screen comes into focus,
   // so edits to the profile photo/name are immediately reflected.
@@ -47,8 +49,8 @@ export default function MainScreen({ navigation }: Props) {
       setIsLoading(true);
       setLoadError(null);
 
-      Promise.all([api.loadProfile(), api.listTemplates()])
-        .then(([p, tmpl]) => {
+      Promise.all([api.loadProfile(), api.listTemplates(), api.listTemplates2(), api.isPremium()])
+        .then(([p, tmpl1, tmpl2, isPremium]) => {
           if (!p) {
             navigation.reset({
               index: 0,
@@ -57,7 +59,13 @@ export default function MainScreen({ navigation }: Props) {
             return;
           }
           setProfile(p);
-          setTemplates(tmpl);
+          setisPremium(isPremium);
+          // Show template1 for premium, template2 for free
+          if (isPremium) {
+            setTemplates(tmpl1); // All premium templates
+          } else {
+            setTemplates(tmpl2); // All free templates (template2)
+          }
           setIsLoading(false);
         })
         .catch((err) => {
@@ -172,8 +180,8 @@ export default function MainScreen({ navigation }: Props) {
   const onRetry = () => {
     setIsLoading(true);
     setLoadError(null);
-    Promise.all([api.loadProfile(), api.listTemplates()])
-      .then(([p, tmpl]) => {
+    Promise.all([api.loadProfile(), api.listTemplates(), api.listTemplates2(), api.isPremium()])
+      .then(([p, tmpl1, tmpl2, isPremium]) => {
         if (!p) {
           navigation.reset({
             index: 0,
@@ -182,7 +190,12 @@ export default function MainScreen({ navigation }: Props) {
           return;
         }
         setProfile(p);
-        setTemplates(tmpl);
+        setisPremium(isPremium);
+        if (isPremium) {
+          setTemplates(tmpl1);
+        } else {
+          setTemplates(tmpl2);
+        }
         setIsLoading(false);
       })
       .catch((err) => {
@@ -246,7 +259,12 @@ export default function MainScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.appTitle}>Suvichar</Text>
+        <View>
+          <Text style={styles.appTitle}>Suvichar</Text>
+          {isPremium && (
+            <Text style={styles.premiumBadge}>👑 Premium</Text>
+          )}
+        </View>
         <TouchableOpacity
           onPress={() => navigation.navigate("Profile")}
           accessibilityLabel="प्रोफ़ाइल"
@@ -276,6 +294,12 @@ export default function MainScreen({ navigation }: Props) {
 
       <View style={styles.cardWrapper}>
         <QuoteCard template={currentTemplate} profile={profile} ref={cardRef} />
+        {!isPremium && (
+          <View style={styles.freeOverlay}>
+            <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+            <Text style={styles.upgradeSubtext}>for more templates</Text>
+          </View>
+        )}
       </View>
 
       <TouchableOpacity
@@ -311,6 +335,15 @@ export default function MainScreen({ navigation }: Props) {
         >
           <Text style={styles.actionText}>एडिट</Text>
         </TouchableOpacity>
+        {!isPremium && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.upgradeButton]}
+            onPress={() => navigation.navigate("Upgrade")}
+            accessibilityLabel="प्रीमियम अपग्रेड करें"
+          >
+            <Text style={styles.upgradeButtonText}>Upgrade</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -334,6 +367,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontFamily: "NotoSansDevanagari"
   },
+  premiumBadge: {
+    fontSize: 12,
+    color: "#6a0bad",
+    fontWeight: "bold",
+    marginTop: 2,
+    fontFamily: "NotoSansDevanagari"
+  },
   profileIcon: {
     width: 36,
     height: 36,
@@ -354,7 +394,28 @@ const styles = StyleSheet.create({
   cardWrapper: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    position: "relative"
+  },
+  freeOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(106, 10, 173, 0.9)",
+    paddingVertical: 12,
+    alignItems: "center"
+  },
+  upgradeText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    fontFamily: "NotoSansDevanagari"
+  },
+  upgradeSubtext: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "NotoSansDevanagari"
   },
   nextButton: {
     backgroundColor: "#6a0dad",
@@ -389,8 +450,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6a0dad",
     fontFamily: "NotoSansDevanagari"
+  },  upgradeButton: {
+    backgroundColor: "#6a0bad"
   },
-  loadingContainer: {
+  upgradeButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "NotoSansDevanagari"
+  },  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center"

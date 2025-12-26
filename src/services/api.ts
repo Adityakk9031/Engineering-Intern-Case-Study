@@ -33,6 +33,9 @@ export const api = {
   listTemplates() {
     return withLatency(() => quotesBackend.listTemplates());
   },
+  listTemplates2() {
+    return withLatency(() => quotesBackend.listTemplates2());
+  },
   // Premium functions
   isPremium() {
     return withLatency(() => premiumBackend.isPremiumUser());
@@ -50,6 +53,7 @@ export const api = {
     return withLatency(() => premiumBackend.clearPremiumState());
   }
 };
+
 
 
 

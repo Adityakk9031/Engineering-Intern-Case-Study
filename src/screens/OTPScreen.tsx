@@ -42,6 +42,8 @@ export default function OTPScreen({ route, navigation }: Props) {
       setLoading(true);
       const res = await api.verifyOtp(phone, otp);
       if (res.success) {
+        // Reset premium state for new user login
+        await api.savePremiumState({ isPremium: false });
         navigation.navigate("Purpose", { phone });
       } else {
         Alert.alert("त्रुटि", "OTP मान्य नहीं है।");
